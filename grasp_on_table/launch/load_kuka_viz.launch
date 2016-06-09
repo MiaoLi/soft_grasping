@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<launch>
+   <arg name="robot_name"                  default="lwr"/>
+  <!-- Required argument --> 
+  <arg name="urdf-name"		  	          default="kuka_lwr_lasa.urdf.xacro"/> 
+
+  <!-- load up urdf to the parameter server -->
+  <arg name="default-starting-config"     default="1"/>
+  <arg name="urdf-path" 	  	          default="$(find lwr_bhand)/robots/$(arg urdf-name)"/>
+  <param name="robot_description"         command="$(find xacro)/xacro.py '$(arg urdf-path)'" />  
+
+  <!-- some global variable -->
+  <param name="/use_sim_time"           value="false"/>
+
+  <!-- load up robot state publisher -->
+  <param name="use_gui" value="true"/>
+  <node name="lwr_joint_publisher" pkg="joint_state_publisher" type="joint_state_publisher"></node>
+  <node name="lwr_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"  output="log" />
+
+
+  
+</launch>

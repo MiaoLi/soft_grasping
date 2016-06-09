@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<launch>
+<!-- LWR KUKA ROBOT -->
+<group ns="lwr">
+    <arg name="urdf-name"                 default="kuka_lwr_lasa.urdf.xacro"/> 
+  <!-- load up urdf to the parameter server -->
+  <arg name="default-starting-config"     default="1"/>
+  <arg name="urdf-path"                 default="$(find lwr_bhand)/robots/$(arg urdf-name)"/>
+  <param name="robot_description"         command="$(find xacro)/xacro.py '$(arg urdf-path)'"/>
+  <include file="$(find grasp_on_table)/launch/lwr_simulation.launch" />
+</group>
+
+<!-- ALLEGRO HAND ROBOT-->  
+<group ns="bhand">
+    <param name="robot_description"
+    command="$(find xacro)/xacro.py '$(find barrett_hand_description)/robots/bh_alone.urdf.xacro'" />
+
+    <include file="$(find barrett_hand_description)/launch/bh_description_arm.launch" />
+</group>
+
+<node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0.00 0 0 0 right_arm_flange_link base_link 10" />
+
+<!-- Show in Rviz   -->
+ <arg name="rviz-config-path"            default="$(find grasp_on_table)/rviz-config/lwr-rviz-config.rviz"/>
+<node name="rviz" pkg="rviz" type="rviz"  args="-d $(arg rviz-config-path)"  required="true" />
+
+</launch>

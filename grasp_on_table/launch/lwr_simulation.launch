@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- Set Robot model/rviz configuration path-->
+  <arg name="robot_name"                  default="lwr"/>
+  <arg name="urdf-name"                   default="kuka_lwr_lasa.urdf.xacro"/>
+  <arg name="load-rviz"                   default="true"/>
+  <arg name="rviz-config-path"            default="$(find grasp_on_table)/rviz-config/lwr-rviz-config.rviz"/>
+
+   <!-- Load KUKA joint state visualization -->
+  <node pkg="tf" type="static_transform_publisher" name="world_frame" args="0 0 0 0 0 0 calib_right_arm_base_link world_frame 100" />
+  
+
+  <include file="$(find grasp_on_table)/launch/load_kuka_viz.launch"/>
+
+   <!-- Startup RVIZ with given config -->
+  <!--group if="$(arg load-rviz)">
+   <node name="rviz" pkg="rviz" type="rviz"  args="-d $(arg rviz-config-path)"  required="true" />
+  </group-->
+
+  
+  
+</launch>
+
