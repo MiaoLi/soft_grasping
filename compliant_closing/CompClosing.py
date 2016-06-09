@@ -12,27 +12,38 @@ Now we use the 'kuka_interface_packages' for arm control,
 import rospy
 import roslib
 from time import *
+from multiprocessing import Process
 
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import PoseStamped, Transform, Point
+from geometry_msgs.msg import PoseStamped, Transform, Point, TwistStamped
 
-from multiprocessing import Process
+
+
 from numpy import *
 
 
 
-Joints= JointState()
-KUKACartMsg= Transform()
+JointTarget = JointState()
+JointCurrent = JointState()
+
+KUKACartMsg = PoseStamped()
 
 def Joint_PD():
-    # Joint position control
-    pub = rospy.Publisher('/allegro/joint_cmd', JointState)
-    rospy.Subscriber("allegroJointState", AllegroJointState, Joint_PDCallBack)
+    # Joint PD control for allegro hand
+    pub = rospy.Publisher('/allegroHand_0/joint_cmd', JointState)
+
+    rospy.Subscriber('/planned_grasp/finger_joints', JointState, Joint_TargetCallBack)
+    rospy.Subscriber('/allegroHand_0/joint_states', JointState, Joint_CurrentCallBack)
+    
+
     rospy.init_node('HandJoint', anonymous=True)  
+    
     r = rospy.Rate(200) # 10hz
     print('run Hand controller-----------')
     
-    Joints.name = ''.join("Allegro")
+    JointCmd = JointState()
+
+    Joints.name = ''.join("Allegro")    
     while not rospy.is_shutdown():
         #'header', 'name', 'position', 'velocity', 'effort'
         #rospy.loginfo(Joints)  
@@ -41,18 +52,33 @@ def Joint_PD():
         pub.publish(Joints)
         r.sleep()   
    
-        
-
-def Joint_PDCallBack(msg):
-	global Joints
-	del Joints.position[:]
+def Joint_CurrentCallBack(msg):
+	global JointCurrent
+	# del Joints.position[:]
 	for i in range(16):
-		Joints.position.append(msg.joints[i])
+		JointCurrent.position.append(msg.position[i])
 
-def KUKA_Cart():
-    # send the cartesian command to kuka
-    pub = rospy.Publisher("/KUKAMotion/CartPoseCmd", Transform)
-    rospy.Subscriber("/kukaArmState", Transform, KUKA_cartCallBack)
+def Joint_TargetCallBack(msg):
+    global JointTarget
+    # del Joints.position[:]
+    for i in range(16):
+        JointTarget.position.append(msg.position[i])
+
+
+def Finger_Closing(VecCurrent, VecTarget, KGain):
+    #KGain is the gain vector for each finger
+    tmp= VecTarget - VecCurrent
+    for i in range(4):
+        VecTarget[4*i]
+
+
+def KUKA_CartImp():
+
+    # send the cartesian impedance command to kuka 
+
+    pub = rospy.Publisher('/KUKA/des_ee_pose', PoseStamped)
+    rospy.Subscriber('/KUKA/Pose', PoseStamped, KUKA_cartCallBack)
+
     rospy.init_node('KUKAPosition', anonymous =True)  
     r = rospy.Rate(100) 
     
@@ -60,34 +86,35 @@ def KUKA_Cart():
 
     while linalg.norm(array([KUKACartMsg.translation.x,KUKACartMsg.translation.y,KUKACartMsg.translation.z]))==0:  
         try:
-            print("Waiting for the KUKACartPose topic")
+            print("Waiting for the /KUKA/Pose topic")
         except (KeyboardInterrupt, SystemExit):
             print "Exiting..."
         sleep(0.01)
 
     while not rospy.is_shutdown():
-        if linalg.norm(array([KUKACartMsg.translation.x,KUKACartMsg.translation.y,KUKACartMsg.translation.z]))!=0:
+        if linalg.norm(array([KUKACartMsg.position.x,KUKACartMsg.position.y,KUKACartMsg.position.z]))!=0:
             rospy.loginfo(KUKACartMsg)
             pub.publish(KUKACartMsg)
             r.sleep()
 
+
 def KUKA_cartCallBack(msg):
     # here change the msg format
-    global KUKACartMsg
-    KUKACartMsg.rotation.w = msg.rotation.w
-    KUKACartMsg.rotation.x = msg.rotation.x 
-    KUKACartMsg.rotation.y = msg.rotation.y
-    KUKACartMsg.rotation.z = msg.rotation.z
-    KUKACartMsg.translation.x = msg.translation.x
-    KUKACartMsg.translation.y = msg.translation.y
-    KUKACartMsg.translation.z = msg.translation.z
+    global KUKACartMsg  
+    KUKACartMsg.pose.orientation.x = msg.pose.orientation.x 
+    KUKACartMsg.pose.orientation.y = msg.pose.orientation.y
+    KUKACartMsg.pose.orientation.z = msg.pose.orientation.z
+    KUKACartMsg.pose.orientation.w = msg.pose.orientation.w
 
+    KUKACartMsg.position.x = msg.position.x
+    KUKACartMsg.position.y = msg.position.y
+    KUKACartMsg.position.z = msg.position.z
 
 if __name__ == '__main__':
     try:
         p1 = Process(target = Joint_PD)
         p1.start()        
-        p2 = Process(target = KUKA_Cart)
+        p2 = Process(target = KUKA_CartImp)
         p2.start()
 
     except rospy.ROSInterruptException: pass
