@@ -43,13 +43,13 @@ def Joint_PD():
     
     JointCmd = JointState()
 
-    Joints.name = ''.join("Allegro")    
+    JointCmd.name = ''.join("Allegro")    
     while not rospy.is_shutdown():
         #'header', 'name', 'position', 'velocity', 'effort'
         #rospy.loginfo(Joints)  
-        Joints.velocity = ''
-        Joints.effort = ''
-        pub.publish(Joints)
+        JointCmd.velocity = ''
+        JointCmd.effort = ''
+        pub.publish(JointCmd)
         r.sleep()   
    
 def Joint_CurrentCallBack(msg):
@@ -68,8 +68,9 @@ def Joint_TargetCallBack(msg):
 def Finger_Closing(VecCurrent, VecTarget, KGain):
     #KGain is the gain vector for each finger
     tmp= VecTarget - VecCurrent
+
     for i in range(4):
-        VecTarget[4*i]
+        VecTarget[4*i] = KGain[0]*tmp[1]
 
 
 def KUKA_CartImp():
