@@ -108,12 +108,15 @@ def DataRecord():
 		HandCmd.header = h
 		# print UsrCmd.data
 		# print UsrCmd.data == 'stop'
+		if UsrCmd.data == 'arm':
+			HandPublisher.publish(HandCmd)
+		else:
+			print 'Arm is in position mode'
 
 		if UsrCmd.data != 'stop' and LA.norm(HandJoints-HandJointsFinal)>0.1:
 			HandJoints = HandJoints + HandSpeed * Delta_time		
 			HandCmd.position = [0.0, HandJoints[0], HandJoints[1],HandJoints[2], 0.0, 0.0,HandJoints[3], HandJoints[3]]
-			HandCmd.velocity= [0.0, HandSpeed[0], HandSpeed[1], HandSpeed[2], 0.0, 0.0, HandSpeed[3], HandSpeed[3]]
-			HandPublisher.publish(HandCmd)	
+			HandCmd.velocity= [0.0, HandSpeed[0], HandSpeed[1], HandSpeed[2], 0.0, 0.0, HandSpeed[3], HandSpeed[3]]		
 			ArmPublisher.publish(ArmJointImpCmd)
 		else:
 			print "stop command the hand"
