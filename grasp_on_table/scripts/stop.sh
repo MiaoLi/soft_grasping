@@ -1,1 +1,0 @@
-rostopic pub /usr/cmd std_msgs/String "stop"

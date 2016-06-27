@@ -66,6 +66,13 @@ def GetUsrCmd(msg):
 	global UsrCmd
 	UsrCmd = msg
 
+def GetJoints(msg):
+	global HandJointsCurrent
+	HandJointsCurrent[0] = msg.position[1]
+	HandJointsCurrent[1] = msg.position[2]
+	HandJointsCurrent[2] = msg.position[3]
+	HandJointsCurrent[3] = msg.position[6]
+
 def DataRecord():
 	
 	rospy.init_node('data_record', anonymous=True)
@@ -73,15 +80,19 @@ def DataRecord():
 
 	# start the data record
 	HandPublisher = rospy.Publisher('/bhand_node/command', JointState, queue_size=1)
-	ArmPublisher =  rospy.Publisher('kuka_fri_bridge/JointStateImpedance',JointStateImpedance, queue_size=1)
+	ArmPublisher =  rospy.Publisher('/KUKA/joint_imp_cmd', JointStateImpedance, queue_size=1)
 	rospy.Subscriber('/usr/cmd',String, GetUsrCmd, queue_size=1)
 	global UsrCmd
 	UsrCmd = String()
-	# The hand start with fully open and close fingers gradually.
-	
-	HandJointsFinal = np.array([1.5,1.5,1.5,0.0])
 
-	SpeedScale = 5
+	rospy.Subscriber('/joint_states', JointState, GetJoints, queue_size=1)
+	global HandJointsCurrent
+	HandJointsCurrent = np.zeros([4])
+	# The hand start with fully open and close fingers gradually.
+	K_range= 1.8  #1.5~1.6
+	HandJointsFinal =K_range* np.array([1.0,1.0,1.0,0.4])
+
+	SpeedScale = 0.0
 	HandSpeed = SpeedScale * np.array([0.1, 0.1, 0.1, 0.0])
 
 	HandCmd =  JointState()
@@ -100,24 +111,36 @@ def DataRecord():
 	ArmJointImpCmd.position = ''
 	ArmJointImpCmd.velocity = ''
 	ArmJointImpCmd.effort = ''
-	ArmJointImpCmd.stiffness = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	ArmJointImpCmd.stiffness = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 	Delta_time = 0.1
 	HandJoints = np.zeros([4])
+
+	bMove = True
+	bArm = True
+	rospy.sleep(.1)
+
 	while not rospy.is_shutdown():
 		h.stamp = rospy.Time.now()
 		HandCmd.header = h
 		# print UsrCmd.data
 		# print UsrCmd.data == 'stop'
-		if UsrCmd.data == 'arm':
-			HandPublisher.publish(HandCmd)
+		if UsrCmd.data == 'arm' or bArm:
+			ArmPublisher.publish(ArmJointImpCmd)
 		else:
 			print 'Arm is in position mode'
-
-		if UsrCmd.data != 'stop' and LA.norm(HandJoints-HandJointsFinal)>0.1:
-			HandJoints = HandJoints + HandSpeed * Delta_time		
-			HandCmd.position = [0.0, HandJoints[0], HandJoints[1],HandJoints[2], 0.0, 0.0,HandJoints[3], HandJoints[3]]
+			
+		if UsrCmd.data != 'stop' and LA.norm(HandJointsCurrent-HandJointsFinal)>0.1 and bMove:
+			# HandJoints = HandJoints + HandSpeed * Delta_time	
+			# bMove = False
+			print 'run once'
+			HandJoints = HandJointsCurrent + (HandJointsFinal-HandJointsCurrent)/LA.norm(HandJointsFinal-HandJointsCurrent)*0.1
+			# print HandJoints
+			# print HandJointsCurrent
+			# HandJoints= HandJointsFinal
+			HandCmd.position = [0.0, HandJoints[0], HandJoints[1],HandJoints[2], 0.0, 0.0, HandJoints[3], HandJoints[3]]
 			HandCmd.velocity= [0.0, HandSpeed[0], HandSpeed[1], HandSpeed[2], 0.0, 0.0, HandSpeed[3], HandSpeed[3]]		
-			ArmPublisher.publish(ArmJointImpCmd)
+			HandPublisher.publish(HandCmd)
+
 		else:
 			print "stop command the hand"
 		r.sleep()
