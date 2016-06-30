@@ -73,6 +73,13 @@ def GetJoints(msg):
 	HandJointsCurrent[2] = msg.position[3]
 	HandJointsCurrent[3] = msg.position[6]
 
+def GetEMGJoints(msg):
+	global EMGJoints
+	EMGJoints[0] = msg.position[0]
+	EMGJoints[1] = msg.position[1]
+	EMGJoints[2] = msg.position[2]
+	EMGJoints[3] = msg.position[3]
+
 def DataRecord():
 	
 	rospy.init_node('data_record', anonymous=True)
@@ -88,10 +95,17 @@ def DataRecord():
 	rospy.Subscriber('/joint_states', JointState, GetJoints, queue_size=1)
 	global HandJointsCurrent
 	HandJointsCurrent = np.zeros([4])
-	# The hand start with fully open and close fingers gradually.
-	K_range= 1.4  #1.5~1.6
-	HandJointsFinal = K_range* np.array([1.0,1.0,1.0,0.4])
+	
+	rospy.Subscriber('bhand_Ja', JointState, GetEMGJoints, queue_size=1)
+	global EMGJoints
+	EMGJoints = np.zeros([4])
 
+
+	# # The hand start with fully open and close fingers gradually.
+	# K_range= 1.4  #1.5~1.6
+	# HandJointsFinal = K_range* np.array([1.0,1.0,1.0,0.4])
+    HandJointFinal = EMGJoints
+    
 	SpeedScale = 0.0
 	HandSpeed = SpeedScale * np.array([0.1, 0.1, 0.1, 0.0])
 
