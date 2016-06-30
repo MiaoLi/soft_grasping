@@ -33,6 +33,7 @@ roslib.load_manifest('kuka_fri_bridge')
 from kuka_fri_bridge.msg import JointStateImpedance
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header, String
+from syntouchpublisher.msg import biotac_message
 
 import rospy
 import numpy as np
@@ -80,6 +81,11 @@ def GetEMGJoints(msg):
 	EMGJoints[2] = msg.position[2]
 	EMGJoints[3] = msg.position[3]
 
+def GetBioTac(msg):
+	global BioTac
+	for i in range(19):
+		BioTac[i]=msg.E[i]
+
 def DataRecord():
 	
 	rospy.init_node('data_record', anonymous=True)
@@ -96,16 +102,18 @@ def DataRecord():
 	global HandJointsCurrent
 	HandJointsCurrent = np.zeros([4])
 	
-	rospy.Subscriber('bhand_Ja', JointState, GetEMGJoints, queue_size=1)
+	rospy.Subscriber('bhand_ja', JointState, GetEMGJoints, queue_size=1)
 	global EMGJoints
 	EMGJoints = np.zeros([4])
 
+	rospy.Subscriber('/finger1',biotac_message, GetBioTac, queue_size=1)
+	global BioTac
+	BioTac = np.zeros([19])
 
 	# # The hand start with fully open and close fingers gradually.
-	# K_range= 1.4  #1.5~1.6
-	# HandJointsFinal = K_range* np.array([1.0,1.0,1.0,0.4])
-    HandJointFinal = EMGJoints
-    
+	K_range= 1.4  #1.5~1.6
+	HandJointsFinal = K_range* np.array([1.0,1.0,1.0,0.4])
+	# HandJointFinal = EMGJoints
 	SpeedScale = 0.0
 	HandSpeed = SpeedScale * np.array([0.1, 0.1, 0.1, 0.0])
 
@@ -138,6 +146,8 @@ def DataRecord():
 		HandCmd.header = h
 		# print UsrCmd.data
 		# print UsrCmd.data == 'stop'
+		print BioTac # Define your own control policy according to this tactile information
+
 		if UsrCmd.data == 'arm' or bArm:
 			ArmPublisher.publish(ArmJointImpCmd)
 		else:
